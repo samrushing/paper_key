@@ -59,14 +59,6 @@ def base58_encode (n):
         l.insert (0, (b58_digits[r]))
     return ''.join (l)
 
-def base58_decode (s):
-    n = 0
-    for ch in s:
-        n *= 58
-        digit = b58_digits.index (ch)
-        n += digit
-    return n
-
 def dhash (s):
     return sha256(sha256(s).digest()).digest()
 
