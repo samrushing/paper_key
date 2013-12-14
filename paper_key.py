@@ -74,12 +74,13 @@ def key_to_address (s):
         )
 
 def pkey_to_address (s):
-    s = '\x80' + s
+    # Add version byte and zero pad to 32 bytes
+    s = '\x80' + '\x00' * (32 - len(s)) + s
     checksum = dhash (s)[:4]
     return base58_encode (
         int ((s + checksum).encode ('hex'), 16)
         )
-        
+
 if __name__ == '__main__':
     import sys
     if len(sys.argv) > 1:
@@ -94,5 +95,3 @@ if __name__ == '__main__':
         print 'private:', pkey_to_address (pri)
         print 'public:', key_to_address (rhash (pub))
         k = None
-
-        
