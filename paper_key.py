@@ -12,6 +12,10 @@ ssl = ctypes.cdll.LoadLibrary (ctypes.util.find_library ('ssl'))
 # this specifies the curve used with ECDSA.
 NID_secp256k1 = 714 # from openssl/obj_mac.h
 
+# thx to WyseNynja and https://github.com/jgarzik/python-bitcoinlib
+# http://crypto.stackexchange.com/questions/8914/ecdsa-compressed-public-key-point-back-to-uncompressed-public-key-point
+POINT_CONVERSION_COMPRESSED = 2
+
 # Thx to Sam Devlin for the ctypes magic 64-bit fix.
 def check_result (val, func, args):
     if val == 0:
@@ -35,7 +39,8 @@ class KEY:
         self.k = None
 
     def generate (self):
-        return ssl.EC_KEY_generate_key (self.k)
+        ssl.EC_KEY_generate_key (self.k)
+        ssl.EC_KEY_set_conv_form (self.k, POINT_CONVERSION_COMPRESSED)
 
     def get_privkey_bignum (self):
         pk = ssl.EC_KEY_get0_private_key (self.k)
@@ -71,22 +76,26 @@ def key_to_address (s):
     s = '\x00' + s
     checksum = dhash (s)[:4]
     encoded = base58_encode (
-        int ('0x' + (s + checksum).encode ('hex'), 16)
-        )
+        int ((s + checksum).encode ('hex'), 16)
+    )
     pad = 0
     for c in s:
         if c == '\x00':
             pad += 1
         else:
             break
-    return '1' * pad  + encoded
+    return ('1' * pad) + encoded
 
 def pkey_to_address (s):
-    # Add version byte and zero pad to 32 bytes
-    s = '\x80' + '\x00' * (32 - len(s)) + s
-    checksum = dhash (s)[:4]
+    kind = '\x80'
+    # zero pad to 32 bytes
+    padding = '\x00' * (32 - len (s))
+    # flag the associated public key as a 'compressed' key.
+    compressed_flag = '\x01'
+    s0 = kind + padding + s + compressed_flag
+    checksum = dhash (s0)[:4]
     return base58_encode (
-        int ((s + checksum).encode ('hex'), 16)
+        int ((s0 + checksum).encode ('hex'), 16)
         )
 
 if __name__ == '__main__':
@@ -100,6 +109,7 @@ if __name__ == '__main__':
         k.generate()
         pri = k.get_privkey_bignum()
         pub = k.get_pubkey_bignum()
+        print pub.encode ('hex')
         print 'private:', pkey_to_address (pri)
         print 'public:', key_to_address (rhash (pub))
         k = None
