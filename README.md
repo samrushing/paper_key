@@ -1,4 +1,3 @@
-
 paper key
 =========
 
@@ -11,7 +10,7 @@ Depending on your level of paranoia, you could run this on a fresh VM, or simply
 usage
 -----
 
-    $ python paper_keys.py <number-of-keys>
+    $ python paper_key.py <number-of-keys>
 
 Example:
 
@@ -25,5 +24,5 @@ Example:
 
 Send them to your printer:
 
-    $ python paper_keys.py 5 | lpr
+    $ python paper_key.py 5 | lpr
 
