@@ -68,10 +68,18 @@ def rhash (s):
     return h1.digest()
 
 def key_to_address (s):
-    checksum = dhash ('\x00' + s)[:4]
-    return '1' + base58_encode (
+    s = '\x00' + s
+    checksum = dhash (s)[:4]
+    encoded = base58_encode (
         int ('0x' + (s + checksum).encode ('hex'), 16)
         )
+    pad = 0
+    for c in s:
+        if c == '\x00':
+            pad += 1
+        else:
+            break
+    return '1' * pad  + encoded
 
 def pkey_to_address (s):
     # Add version byte and zero pad to 32 bytes
