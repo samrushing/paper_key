@@ -1,7 +1,21 @@
 paper key
 =========
 
-This is a standalone bitcoin paper key generator.  It has no dependencies other than Python and OpenSSL.
+This is a standalone bitcoin key generator for making paper wallets.
+The goal: as much as possible, use pure python.  Keep the code short enough to be audited easily.
+
+Dependencies for paper_key:
+
+  * https://github.com/warner/python-ecdsa
+
+Dependcies for bip38:
+
+  * https://github.com/ricmoo/pyaes
+  * https://pypi.python.org/pypi/scrypt/ -or-
+  * https://pypi.python.org/pypi/pyscrypt
+
+If you choose pyscrypt, then all dependencies are in python, and auditable.
+Note however, pyscrypt takes about 3-5 minutes to encrypt/decrypt a key, on a fast machine.
 
 It will generate a set of fresh keys and send them to stdout with the private keys in 'wallet import format'.
 
@@ -25,4 +39,48 @@ Example:
 Send them to your printer:
 
     $ python paper_key.py 5 | lpr
+
+
+Encrypted BIP38 keys:
+
+    usage: bip38.py [-h] [-n NUMKEYS] [-t] [keys [keys ...]]
+    
+    BIP38 key encoder/generator.
+    
+    positional arguments:
+      keys                  WIF keys to wrap with BIP38, or BIP38 keys to decrypt
+                            to WIF
+    
+    optional arguments:
+      -h, --help            show this help message and exit
+      -n NUMKEYS, --numkeys NUMKEYS
+                            number of keys to generate
+      -t, --test            run [some] BIP38 test vectors
+
+    $ python bip38.py -n 3
+    passphrase:
+    again     :
+    1CpYc1i3DUHFskk8uywT68t8FeBjUkYrzk
+    6PRNCwpmVNhQx8MVhZRh4Sm8GGUiiwq7MGAZ8DGPpuruerd8kkFsdeb6x9
+    19VQWDwnvNUiMAnA9dM1P7eKm3jncGYGtB
+    6PRQWcV2yF1Pfo6PXHWpXNMGFet6dSWTwxjhuNxD2UKUGEocxUfpUguxEM
+    1F6KCYKSL7GVD2qVYhuostHsRgEJSwkMRt
+    6PRLvtN3KmvpKy3k5ZVR6EoJVoBgnkzXHP4YDYMPX3tgabUWDRGSBDkntN
+
+Send encrypted keys to your printer:
+
+    $ python bip38.py -n 3 | lpr
+
+Decrypt an existing key:
+
+    $ python bip38.py 6PRNCwpmVNhQx8MVhZRh4Sm8GGUiiwq7MGAZ8DGPpuruerd8kkFsdeb6x9
+    passphrase:
+    wif: 5JopRbTAnoBnd3WWt5UFDLkw2JYftAbs8rYBiZj9fz62H4Kkd9j
+    pub: 1CpYc1i3DUHFskk8uywT68t8FeBjUkYrzk
+
+Encrypt an existing key:
+
+    $ python bip38.py 5JopRbTAnoBnd3WWt5UFDLkw2JYftAbs8rYBiZj9fz62H4Kkd9j
+    passphrase:
+    6PRNCwpmVNhQx8MVhZRh4Sm8GGUiiwq7MGAZ8DGPpuruerd8kkFsdeb6x9
 
