@@ -1,54 +1,52 @@
 # -*- Mode: Python -*-
 
-# standalone, self-contained paper wallet generator
-import ctypes
-import ctypes.util
-import sys
+# Generate Bitcoin keys in WIF (wallet import format).
+
+#
+# https://github.com/warner/python-ecdsa
+# $ easy_install ecdsa
+#
+
+# 20170221, still waiting for SEC format from python-ecdsa.
+# until then, we can only use uncompressed public keys.
+
+import ecdsa
 import hashlib
 from hashlib import sha256
 
-ssl = ctypes.cdll.LoadLibrary (ctypes.util.find_library ('ssl'))
-
-# this specifies the curve used with ECDSA.
-NID_secp256k1 = 714 # from openssl/obj_mac.h
-
-# Thx to Sam Devlin for the ctypes magic 64-bit fix.
-def check_result (val, func, args):
-    if val == 0:
-        raise ValueError
-    else:
-        return ctypes.c_void_p (val)
-
-ssl.EC_KEY_new_by_curve_name.restype = ctypes.c_void_p
-ssl.EC_KEY_new_by_curve_name.errcheck = check_result
-ssl.EC_KEY_get0_private_key.restype = ctypes.c_void_p
-ssl.EC_KEY_get0_private_key.errcheck = check_result
-ssl.BN_bn2hex.restype = ctypes.c_char_p
-
 class KEY:
 
-    def __init__ (self):
-        self.k = ssl.EC_KEY_new_by_curve_name (NID_secp256k1)
-
-    def __del__ (self):
-        ssl.EC_KEY_free (self.k)
-        self.k = None
+    def __init__ (self, key=None):
+        if key == None:
+            self.generate()
+        else:
+            self.set_privkey (key)
 
     def generate (self):
-        return ssl.EC_KEY_generate_key (self.k)
+        self.prikey = ecdsa.SigningKey.generate (curve=ecdsa.SECP256k1)
+        self.pubkey = self.prikey.get_verifying_key()
+        return self.prikey.to_der()
 
-    def get_privkey_bignum (self):
-        pk = ssl.EC_KEY_get0_private_key (self.k)
-        return ssl.BN_bn2hex (pk).decode ('hex')
+    def set_privkey (self, key):
+        self.prikey = ecdsa.SigningKey.from_string (key, ecdsa.SECP256k1)
+        self.pubkey = self.prikey.get_verifying_key()
 
-    def get_pubkey_bignum (self):
-        size = ssl.i2o_ECPublicKey (self.k, 0)
-        if size == 0:
-            raise SystemError
-        else:
-            mb = ctypes.create_string_buffer (size)
-            ssl.i2o_ECPublicKey (self.k, ctypes.byref (ctypes.pointer (mb)))
-            return mb.raw
+    def set_pubkey (self, key):
+        key = key[1:]
+        self.pubkey = ecdsa.VerifyingKey.from_string (key, curve=secp256k1)
+
+    def get_privkey (self):
+        return self.prikey.to_string()
+
+    def get_pubkey (self):
+        return '\x04' + self.pubkey.to_string()
+
+    def sign (self, msg):
+        return self.prikey.sign_digest (msg)
+
+    def verify (self, hash, sig):
+        return self.pubkey.verify_digest (sig[:-1], hash, sigdecode=ecdsa.util.sigdecode_der)
+
 
 b58_digits = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
@@ -67,27 +65,41 @@ def rhash (s):
     h1.update (sha256(s).digest())
     return h1.digest()
 
-def key_to_address (s):
+def pub_key_to_address (s):
     s = '\x00' + s
     checksum = dhash (s)[:4]
     encoded = base58_encode (
-        int ('0x' + (s + checksum).encode ('hex'), 16)
-        )
+        int ((s + checksum).encode ('hex'), 16)
+    )
     pad = 0
     for c in s:
         if c == '\x00':
             pad += 1
         else:
             break
-    return '1' * pad  + encoded
+    return ('1' * pad) + encoded
 
-def pkey_to_address (s):
-    # Add version byte and zero pad to 32 bytes
-    s = '\x80' + '\x00' * (32 - len(s)) + s
-    checksum = dhash (s)[:4]
+def pri_key_to_address (s, version=0x80, compressed=False):
+    # zero pad to 32 bytes
+    padding = '\x00' * (32 - len (s))
+    if compressed:
+        # flag the associated public key as a 'compressed' key.
+        compressed_flag = '\x01'
+    else:
+        compressed_flag = ''
+    s0 = chr(version) + padding + s + compressed_flag
+    checksum = dhash (s0)[:4]
     return base58_encode (
-        int ((s + checksum).encode ('hex'), 16)
+        int ((s0 + checksum).encode ('hex'), 16)
         )
+
+def gen_one (compressed=False):
+    if compressed:
+        raise NotImplementedError ("no support [yet] for compressed public keys")
+    k = KEY()
+    pri = k.get_privkey()
+    pub = k.get_pubkey()
+    return pri, pub
 
 if __name__ == '__main__':
     import sys
@@ -96,10 +108,14 @@ if __name__ == '__main__':
     else:
         nkeys = 1
     for i in range (nkeys):
-        k = KEY()
-        k.generate()
-        pri = k.get_privkey_bignum()
-        pub = k.get_pubkey_bignum()
-        print 'private:', pkey_to_address (pri)
-        print 'public:', key_to_address (rhash (pub))
-        k = None
+        pri, pub = gen_one()
+        if pub[0] in '\x02\x03':
+            compressed = True
+        elif pub[0] == '\x04':
+            compressed = False
+        else:
+            raise ValueError ("unexpected public key SEC tag", pub)
+        print 'wif:', pri_key_to_address (pri, compressed=compressed)
+        print 'pub:', pub_key_to_address (rhash (pub))
+        print
+    
