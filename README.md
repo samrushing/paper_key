@@ -6,11 +6,11 @@ The goal: as much as possible, use pure python.  Keep the code short enough to b
 
 Dependencies for paper_key:
 
-  * https://github.com/warner/python-ecdsa
+  * https://pypi.python.org/pypi/ecdsa
 
 Dependcies for bip38:
 
-  * https://github.com/ricmoo/pyaes
+  * https://pypi.python.org/pypi/pyaes/
   * https://pypi.python.org/pypi/scrypt/ -or-
   * https://pypi.python.org/pypi/pyscrypt
 
