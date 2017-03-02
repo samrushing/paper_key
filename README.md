@@ -21,6 +21,9 @@ It will generate a set of fresh keys and send them to stdout with the private ke
 
 Depending on your level of paranoia, you could run this on a fresh VM, or simply redirect the output directly to a printer.
 
+Note: Because the `python-ecdsa` package does not yet support compressed keys, this utility
+currently supports only uncompressed keys.
+
 usage
 -----
 
